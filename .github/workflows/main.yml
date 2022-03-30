@@ -1,15 +1,31 @@
-name: Newman Run
+name: Execute API tests
 
-on:
-  pull_request:
-    branches:
-      - main
+on: [push, workflow_dispatch]
 
 jobs:
   newman:
     runs-on: ubuntu-latest
     steps:
-      - uses: matt-ball/newman-action@master
+      - uses: actions/checkout@v2
+      - name: Install dependencies
+        run: |
+          npm install -g newman newman-reporter-htmlextra
+
+      - name: Run tests
+        run: |
+          newman run "https://api.getpostman.com/collections/${{ secrets.COLLECTION_ID }}?apikey=${{ secrets.POSTMAN_API_KEY }}" -r "cli,htmlextra,junit"
+
+      - name: Publish Test Report
+        uses: dorny/test-reporter@v1
+        if: always()
         with:
-          apiKey: ${{ secrets.postmanApiKey }}
-          collection: 92eb399c-cb83-4ca8-a02c-fcdd8e244716
+          name: JUnit report
+          path: newman/*.xml
+          reporter: java-junit
+
+      - name: Publish HTML report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: html-report
+          path: newman/*.html
